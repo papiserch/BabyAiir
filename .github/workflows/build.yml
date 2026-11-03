@@ -1,0 +1,43 @@
+name: Build BABY AIR
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            targets: BabyAir_VST3
+            artefact: build/BabyAir_artefacts/Release/VST3
+          - os: macos-latest
+            name: macos
+            targets: BabyAir_VST3 BabyAir_AU
+            artefact: build/BabyAir_artefacts/Release
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (downloads JUCE 8.0.8)
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build plugin
+        run: cmake --build build --config Release --parallel --target ${{ matrix.targets }}
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: BABY-AIR-${{ matrix.name }}
+          path: ${{ matrix.artefact }}
+          if-no-files-found: error
+
+      - name: DSP tests
+        run: |
+          cmake --build build --config Release --target BabyAirDspTests
+          cmake -E echo "built"
